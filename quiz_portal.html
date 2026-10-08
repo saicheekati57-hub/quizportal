@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Python Basics Quiz Portal</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<style>
+  body{background:linear-gradient(135deg,#eef2ff 0%,#f8fafc 60%);min-height:100vh;font-family:'Segoe UI',system-ui,sans-serif}
+  .brand{font-weight:700;letter-spacing:.3px}
+  .hero-card{border:0;border-radius:18px;transition:transform .2s,box-shadow .2s;cursor:pointer}
+  .hero-card:hover{transform:translateY(-6px);box-shadow:0 14px 30px rgba(79,70,229,.25)!important}
+  .hero-icon{font-size:3.5rem}
+  .stat-card{border:0;border-radius:14px;color:#fff}
+  .bg-g1{background:linear-gradient(135deg,#6366f1,#4338ca)}
+  .bg-g2{background:linear-gradient(135deg,#10b981,#047857)}
+  .bg-g3{background:linear-gradient(135deg,#f59e0b,#b45309)}
+  .bg-g4{background:linear-gradient(135deg,#ef4444,#b91c1c)}
+  .bg-g5{background:linear-gradient(135deg,#0ea5e9,#0369a1)}
+  .bg-g6{background:linear-gradient(135deg,#8b5cf6,#6d28d9)}
+  .opt{display:flex;align-items:center;gap:12px;border:2px solid #e2e8f0;border-radius:12px;padding:12px 16px;margin-bottom:12px;cursor:pointer;background:#fff;transition:all .15s}
+  .opt:hover{border-color:#818cf8;background:#f5f7ff}
+  .opt.sel{border-color:#4f46e5;background:#eef2ff}
+  .opt.correct{border-color:#16a34a;background:#dcfce7}
+  .opt.wrong{border-color:#dc2626;background:#fee2e2}
+  .opt .letter{width:30px;height:30px;border-radius:50%;background:#e2e8f0;display:inline-flex;align-items:center;justify-content:center;font-weight:700;flex:0 0 30px}
+  .opt.sel .letter{background:#4f46e5;color:#fff}
+  .opt.correct .letter{background:#16a34a;color:#fff}
+  .opt.wrong .letter{background:#dc2626;color:#fff}
+  .qnav{width:38px;height:38px;padding:0}
+  .score-circle{width:170px;height:170px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto;color:#fff;box-shadow:0 10px 25px rgba(0,0,0,.2)}
+  .sidebar{background:#1e1b4b;min-height:calc(100vh - 56px)}
+  .sidebar .nav-link{color:#c7d2fe;border-radius:10px;margin-bottom:4px;cursor:pointer}
+  .sidebar .nav-link:hover{background:rgba(255,255,255,.08)}
+  .sidebar .nav-link.active{background:#4f46e5;color:#fff}
+  .card{border-radius:14px}
+  .table thead th{white-space:nowrap}
+  #toasts{position:fixed;top:70px;right:16px;z-index:2000;display:flex;flex-direction:column;gap:8px}
+  @media(max-width:767px){.sidebar{min-height:auto}}
+</style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark" style="background:#312e81">
+  <div class="container-fluid">
+    <span class="navbar-brand brand"><i class="bi bi-mortarboard-fill me-2"></i>Python Quiz Portal</span>
+    <div class="d-flex align-items-center gap-2">
+      <span id="modeBadge" class="badge text-bg-secondary d-none d-sm-inline"></span>
+      <span id="userBadge" class="text-white small"></span>
+      <button id="logoutBtn" class="btn btn-sm btn-outline-light d-none" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div id="app"><div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">Loading...</p></div></div>
+<div id="toasts"></div>
+
+<!-- Generic modal -->
+<div class="modal fade" id="appModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="mTitle"></h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body" id="mBody"></div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" id="mSave">Save</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ===================== CONFIG ===================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyBkEgkeYU-bZaxUX0myOcuUrU3zBJv3bDU",
+  authDomain: "quizapplication-1e03d.firebaseapp.com",
+  projectId: "quizapplication-1e03d",
+  storageBucket: "quizapplication-1e03d.firebasestorage.app",
+  messagingSenderId: "72415113512",
+  appId: "1:72415113512:web:a6388fd5f6522998cfe01d",
+  measurementId: "G-CW6HQZX2DX"
+};
+const ADMIN_USER = "Sai Tharun", ADMIN_PASS = "sai@123";
+const REG_RE = /^25CSE(0[1-9]|[1-6][0-9]|7[0-2])$/;
+const NAME_RE = /^[A-Za-z]+( [A-Za-z]+)*$/;
+
+/* ===================== HELPERS ===================== */
+const $ = s => document.querySelector(s);
+const app = $('#app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const withTimeout = (p, ms = 7000) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('timeout')), ms))]);
+const fmtDate = iso => new Date(iso).toLocaleString();
+const round2 = n => Math.round(n * 100) / 100;
+const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+function shuffle(a){ a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function toast(msg, type = 'success'){
+  const el = document.createElement('div');
+  el.className = `toast align-items-center text-bg-${type} border-0 show`;
+  el.innerHTML = `<div class="d-flex"><div class="toast-body">${esc(msg)}</div></div>`;
+  $('#toasts').appendChild(el); setTimeout(() => el.remove(), 3200);
+}
+let modal;
+function openModal(title, body, onSave, saveLabel = 'Save'){
+  $('#mTitle').textContent = title; $('#mBody').innerHTML = body; $('#mSave').textContent = saveLabel;
+  $('#mSave').onclick = async () => { const ok = await onSave(); if(ok !== false) modal.hide(); };
+  modal.show();
+}
+
+/* ===================== DEFAULT DATA ===================== */
+function defaultCfg(){
+  return {
+    currentExamId: 1,
+    exams: [{ id: 1, title: 'Python Basics Quiz', date: todayStr(), time: '00:00', duration: 15, pass: 40, random: false, status: 'active', createdAt: new Date().toISOString() }],
+    questions: [
+      { q: 'Which function is used to display output in Python?', options: ['input()', 'print()', 'echo()', 'display()'], correct: 1 },
+      { q: 'Which of the following is a valid variable name in Python?', options: ['2name', 'my-var', 'class', 'my_var'], correct: 3 },
+      { q: 'What is the data type of the result of 5/2 in Python 3?', options: ["<class 'int'>", "<class 'float'>", "<class 'str'>", "<class 'double'>"], correct: 1 },
+      { q: 'Which keyword is used to define a function in Python?', options: ['function', 'fun', 'def', 'define'], correct: 2 },
+      { q: 'Which symbol is used to start a single-line comment in Python?', options: ['//', '/*', '#', '--'], correct: 2 },
+      { q: 'What is the output of len([1, 2, 3])?', options: ['2', '3', '4', 'Error'], correct: 1 },
+      { q: 'Which of the following data types is immutable?', options: ['list', 'dict', 'set', 'tuple'], correct: 3 },
+      { q: 'What is the output of 2 ** 3?', options: ['6', '9', '8', '5'], correct: 2 },
+      { q: 'Which keyword is used for "else if" in Python?', options: ['else if', 'elseif', 'elif', 'elsif'], correct: 2 },
+      { q: 'What does range(3) generate?', options: ['1, 2, 3', '0, 1, 2', '0, 1, 2, 3', '1, 2'], correct: 1 }
+    ]
+  };
+}
+
+/* ===================== STORAGE (Firebase Firestore with localStorage fallback) ===================== */
+let cfg, results = [], students = [];
+const LS = 'python_quiz_portal_v1';
+const lsGet = () => { try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch(e){ return {}; } };
+const Store = {
+  mode: 'local', db: null,
+  async init(){
+    try{
+      if(!window.firebase) throw new Error('no firebase');
+      firebase.initializeApp(firebaseConfig);
+      this.db = firebase.firestore();
+      await withTimeout(this.db.collection('app').doc('config').get());
+      this.mode = 'cloud';
+    }catch(e){ console.warn('Firebase unavailable, using localStorage:', e.message); this.mode = 'local'; }
+    this.badge();
+  },
+  badge(){
+    const b = $('#modeBadge');
+    b.className = 'badge d-none d-sm-inline ' + (this.mode === 'cloud' ? 'text-bg-success' : 'text-bg-warning');
+    b.innerHTML = this.mode === 'cloud' ? '<i class="bi bi-cloud-check"></i> Firebase' : '<i class="bi bi-hdd"></i> Local storage';
+  },
+  persistLocal(){ localStorage.setItem(LS, JSON.stringify({ config: cfg, results, students })); },
+  async load(){
+    if(this.mode === 'cloud'){
+      try{
+        const d = await withTimeout(this.db.collection('app').doc('config').get());
+        cfg = d.exists ? d.data() : null;
+        if(!cfg){ cfg = defaultCfg(); await this.db.collection('app').doc('config').set(cfg); }
+        results = (await withTimeout(this.db.collection('results').get())).docs.map(x => ({ ...x.data(), id: x.id }));
+        students = (await withTimeout(this.db.collection('students').get())).docs.map(x => ({ ...x.data(), id: x.id }));
+        return;
+      }catch(e){ console.warn('Cloud load failed, switching to local', e.message); this.mode = 'local'; this.badge(); }
+    }
+    const l = lsGet();
+    cfg = l.config || defaultCfg(); results = l.results || []; students = l.students || [];
+    if(!l.config) this.persistLocal();
+  },
+  async saveConfig(){
+    if(this.mode === 'cloud') await this.db.collection('app').doc('config').set(cfg); else this.persistLocal();
+  },
+  async addResult(r){
+    if(this.mode === 'cloud'){ const ref = await this.db.collection('results').add(r); r.id = ref.id; }
+    else r.id = 'r' + Date.now() + Math.random().toString(36).slice(2, 6);
+    results.push(r); if(this.mode === 'local') this.persistLocal(); return r;
+  },
+  async updateResult(r){
+    if(this.mode === 'cloud'){ const { id, ...d } = r; await this.db.collection('results').doc(id).set(d); } else this.persistLocal();
+  },
+  async deleteResult(id){
+    if(this.mode === 'cloud') await this.db.collection('results').doc(id).delete();
+    results = results.filter(r => r.id !== id); if(this.mode === 'local') this.persistLocal();
+  },
+  async saveStudent(s){
+    s.id = s.reg;
+    if(this.mode === 'cloud'){ const { id, ...d } = s; await this.db.collection('students').doc(id).set(d); }
+    const i = students.findIndex(x => x.reg === s.reg);
+    if(i >= 0) students[i] = s; else students.push(s);
+    if(this.mode === 'local') this.persistLocal();
+  },
+  async deleteStudent(reg){
+    const rs = results.filter(r => r.reg === reg);
+    for(const r of rs) await this.deleteResult(r.id);
+    if(this.mode === 'cloud') await this.db.collection('students').doc(reg).delete();
+    students = students.filter(s => s.reg !== reg); if(this.mode === 'local') this.persistLocal();
+  }
+};
+
+/* ===================== STATE ===================== */
+let sess = JSON.parse(sessionStorage.getItem('sess') || 'null');
+let ex = null, timer = null, adminTab = 'dashboard';
+const curExam = () => cfg.exams.find(e => e.id === cfg.currentExamId) || cfg.exams[cfg.exams.length - 1];
+const examById = id => cfg.exams.find(e => e.id === id);
+const avg = arr => arr.length ? round2(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
+const topScorers = (examId, n = 5) => results.filter(r => r.examId === examId).sort((a, b) => b.percent - a.percent || String(a.date).localeCompare(String(b.date))).slice(0, n);
+const statusOf = (percent, exam) => percent >= (exam ? exam.pass : 40) ? 'Pass' : 'Fail';
+const badge = s => `<span class="badge text-bg-${s === 'Pass' ? 'success' : 'danger'}">${s}</span>`;
+
+async function nav(){ await Store.load(); render(); }
+function render(){
+  clearInterval(timer); window.onbeforeunload = null;
+  $('#userBadge').textContent = sess ? (sess.role === 'admin' ? 'Admin: ' + sess.name : sess.reg + ' - ' + sess.name) : '';
+  $('#logoutBtn').classList.toggle('d-none', !sess);
+  if(!sess) return home();
+  if(sess.role === 'student') return studentDash();
+  return adminView();
+}
+function logout(){ sessionStorage.removeItem('sess'); sess = null; ex = null; render(); }
+
+/* ===================== HOME / LOGIN ===================== */
+function home(){
+  app.innerHTML = `
+  <div class="container py-5">
+    <div class="text-center mb-5">
+      <h1 class="fw-bold">Python Basics Quiz Examination</h1>
+      <p class="text-muted fs-5">Choose how you want to sign in</p>
+    </div>
+    <div class="row justify-content-center g-4">
+      <div class="col-md-5"><div class="card hero-card shadow text-center p-4" onclick="studentLogin()">
+        <i class="bi bi-person-badge hero-icon text-primary"></i><h3 class="mt-2">Student Login</h3><p class="text-muted mb-0">Take the exam and view your results</p></div></div>
+      <div class="col-md-5"><div class="card hero-card shadow text-center p-4" onclick="adminLogin()">
+        <i class="bi bi-shield-lock hero-icon text-danger"></i><h3 class="mt-2">Admin Login</h3><p class="text-muted mb-0">Manage exams, questions and results</p></div></div>
+    </div>
+  </div>`;
+}
+function studentLogin(){
+  app.innerHTML = `
+  <div class="container py-5" style="max-width:480px">
+    <div class="card shadow border-0"><div class="card-body p-4">
+      <h3 class="mb-1"><i class="bi bi-person-badge text-primary"></i> Student Login</h3>
+      <p class="text-muted">Enter your register number and name. First-time users are registered automatically.</p>
+      <form id="sf" novalidate>
+        <div class="mb-3"><label class="form-label">Register Number</label>
+          <input id="reg" class="form-control" placeholder="e.g. 25CSE01" maxlength="7" autocomplete="off">
+          <div class="form-text">Valid range: 25CSE01 to 25CSE72</div></div>
+        <div class="mb-3"><label class="form-label">Name</label>
+          <input id="nm" class="form-control" placeholder="Letters only" autocomplete="off">
+          <div class="form-text">Only alphabets (and spaces between words)</div></div>
+        <div id="err" class="text-danger small mb-2"></div>
+        <button class="btn btn-primary w-100">Login</button>
+        <button type="button" class="btn btn-link w-100 mt-1" onclick="render()">&larr; Back</button>
+      </form>
+    </div></div>
+  </div>`;
+  $('#nm').addEventListener('input', e => e.target.value = e.target.value.replace(/[^A-Za-z ]/g, ''));
+  $('#reg').addEventListener('input', e => e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''));
+  $('#sf').onsubmit = async e => {
+    e.preventDefault();
+    const reg = $('#reg').value.trim().toUpperCase(), name = $('#nm').value.trim().replace(/\s+/g, ' ');
+    const err = m => $('#err').textContent = m;
+    if(!REG_RE.test(reg)) return err('Register number must be between 25CSE01 and 25CSE72.');
+    if(!NAME_RE.test(name)) return err('Name must contain only letters.');
+    await Store.load();
+    const old = students.find(s => s.reg === reg);
+    if(old && old.name.toLowerCase() !== name.toLowerCase()) return err('This register number is already registered with a different name.');
+    if(!old) await Store.saveStudent({ reg, name, createdAt: new Date().toISOString() });
+    sess = { role: 'student', reg, name: old ? old.name : name };
+    sessionStorage.setItem('sess', JSON.stringify(sess)); render();
+  };
+}
+function adminLogin(){
+  app.innerHTML = `
+  <div class="container py-5" style="max-width:440px">
+    <div class="card shadow border-0"><div class="card-body p-4">
+      <h3 class="mb-3"><i class="bi bi-shield-lock text-danger"></i> Admin Login</h3>
+      <form id="af">
+        <div class="mb-3"><label class="form-label">User Name</label><input id="au" class="form-control" autocomplete="off"></div>
+        <div class="mb-3"><label class="form-label">Password</label><input id="ap" type="password" class="form-control"></div>
+        <div id="err" class="text-danger small mb-2"></div>
+        <button class="btn btn-danger w-100">Login</button>
+        <button type="button" class="btn btn-link w-100 mt-1" onclick="render()">&larr; Back</button>
+      </form>
+    </div></div>
+  </div>`;
+  $('#af').onsubmit = e => {
+    e.preventDefault();
+    if($('#au').value.trim().toLowerCase() === ADMIN_USER.toLowerCase() && $('#ap').value === ADMIN_PASS){
+      sess = { role: 'admin', name: ADMIN_USER }; sessionStorage.setItem('sess', JSON.stringify(sess)); adminTab = 'dashboard'; nav();
+    } else $('#err').textContent = 'Invalid user name or password.';
+  };
+}
+
+/* ===================== STUDENT DASHBOARD ===================== */
+function studentDash(){
+  const e = curExam(), mine = results.filter(r => r.reg === sess.reg);
+  const myAvg = avg(mine.map(r => r.percent));
+  const examAvg = avg(results.filter(r => r.examId === e.id).map(r => r.percent));
+  const attempted = mine.find(r => r.examId === e.id);
+  const startAt = e.date ? new Date(`${e.date}T${e.time || '00:00'}`) : null;
+  const notYet = startAt && Date.now() < startAt.getTime();
+  let action;
+  if(e.status === 'completed') action = `<button class="btn btn-secondary btn-lg" disabled>Exam Closed</button>`;
+  else if(attempted) action = `<button class="btn btn-success btn-lg" disabled><i class="bi bi-check-circle"></i> Already Attempted</button>`;
+  else if(notYet) action = `<button class="btn btn-warning btn-lg" disabled>Starts on ${esc(startAt.toLocaleString())}</button>`;
+  else if(!cfg.questions.length) action = `<button class="btn btn-secondary btn-lg" disabled>No questions available</button>`;
+  else action = `<button class="btn btn-primary btn-lg" onclick="startExam()"><i class="bi bi-play-circle"></i> Start Exam</button>`;
+  const top = topScorers(e.id);
+  app.innerHTML = `
+  <div class="container py-4">
+    <h3 class="mb-3">Welcome, ${esc(sess.name)} <small class="text-muted fs-6">(${esc(sess.reg)})</small></h3>
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-3"><div class="card stat-card bg-g1 p-3"><div class="small">My Average Score</div><div class="fs-3 fw-bold">${myAvg}%</div></div></div>
+      <div class="col-6 col-md-3"><div class="card stat-card bg-g5 p-3"><div class="small">Class Average (This Exam)</div><div class="fs-3 fw-bold">${examAvg}%</div></div></div>
+      <div class="col-6 col-md-3"><div class="card stat-card bg-g2 p-3"><div class="small">Exams Attempted</div><div class="fs-3 fw-bold">${mine.length}</div></div></div>
+      <div class="col-6 col-md-3"><div class="card stat-card bg-g3 p-3"><div class="small">Passed</div><div class="fs-3 fw-bold">${mine.filter(r => r.status === 'Pass').length}</div></div></div>
+    </div>
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <div class="card shadow-sm h-100"><div class="card-body">
+          <h5><i class="bi bi-journal-text text-primary"></i> Exam Details</h5>
+          <table class="table table-sm mb-3">
+            <tr><th>Exam</th><td>${esc(e.title)}</td></tr>
+            <tr><th>Date</th><td>${esc(e.date || 'Any day')}</td></tr>
+            <tr><th>Start Time</th><td>${esc(e.time || '-')}</td></tr>
+            <tr><th>Duration</th><td>${e.duration} minutes</td></tr>
+            <tr><th>Questions</th><td>${cfg.questions.length} (multiple choice)</td></tr>
+            <tr><th>Pass Percentage</th><td>${e.pass}%</td></tr>
+            <tr><th>Status</th><td>${e.status === 'active' ? '<span class="badge text-bg-success">Active</span>' : '<span class="badge text-bg-secondary">Completed</span>'}</td></tr>
+          </table>
+          <div class="text-center">${action}</div>
+        </div></div>
+      </div>
+      <div class="col-lg-6">
+        <div class="card shadow-sm h-100"><div class="card-body">
+          <h5><i class="bi bi-trophy-fill text-warning"></i> Top Scorers</h5>
+          ${top.length ? `<table class="table table-sm align-middle"><thead><tr><th>#</th><th>Name</th><th>Reg No</th><th>Score</th><th>%</th></tr></thead><tbody>
+            ${top.map((r, i) => `<tr><td>${i === 0 ? '&#129351;' : i === 1 ? '&#129352;' : i === 2 ? '&#129353;' : i + 1}</td><td>${esc(r.name)}</td><td>${esc(r.reg)}</td><td>${r.score}/${r.total}</td><td>${r.percent}%</td></tr>`).join('')}
+            </tbody></table>` : '<p class="text-muted">No attempts yet. Be the first!</p>'}
+        </div></div>
+      </div>
+    </div>
+    <div class="card shadow-sm mt-4"><div class="card-body">
+      <h5><i class="bi bi-clock-history text-primary"></i> My Results</h5>
+      ${mine.length ? `<div class="table-responsive"><table class="table table-hover align-middle"><thead><tr><th>Exam</th><th>Date</th><th>Score</th><th>Percentage</th><th>Status</th><th></th></tr></thead><tbody>
+        ${mine.slice().reverse().map(r => `<tr><td>${esc(r.examTitle)}</td><td>${fmtDate(r.date)}</td><td>${r.score}/${r.total}</td><td>${r.percent}%</td><td>${badge(r.status)}</td>
+        <td>${r.qs && r.qs.length ? `<button class="btn btn-sm btn-outline-primary" onclick="reviewResult('${r.id}')"><i class="bi bi-eye"></i> View Answers</button>` : ''}</td></tr>`).join('')}
+      </tbody></table></div>` : '<p class="text-muted mb-0">You have not attempted any exam yet.</p>'}
+    </div></div>
+  </div>`;
+}
+
+/* ===================== EXAM ===================== */
+function startExam(){
+  const e = curExam();
+  if(!confirm(`Start "${e.title}"?\nDuration: ${e.duration} minutes. The timer starts immediately.`)) return;
+  const qs = (e.random ? shuffle(cfg.questions) : cfg.questions).map(q => ({ q: q.q, options: q.options.slice(), correct: q.correct }));
+  ex = { qs, ans: Array(qs.length).fill(-1), i: 0, endAt: Date.now() + e.duration * 60000, examId: e.id, done: false };
+  window.onbeforeunload = () => 'Your exam is in progress.';
+  renderExam();
+  clearInterval(timer); timer = setInterval(tick, 1000);
+}
+function tick(){
+  if(!ex || ex.done) return;
+  const left = Math.max(0, Math.round((ex.endAt - Date.now()) / 1000));
+  const t = $('#timer'); if(t) { t.innerHTML = `<i class="bi bi-clock"></i> ${String(Math.floor(left / 60)).padStart(2, '0')}:${String(left % 60).padStart(2, '0')}`; t.className = 'badge fs-6 text-bg-' + (left < 60 ? 'danger' : 'dark'); }
+  if(left <= 0){ toast('Time is up! Submitting your exam...', 'warning'); submitExam(true); }
+}
+function renderExam(){
+  const q = ex.qs[ex.i], n = ex.qs.length, e = curExam();
+  app.innerHTML = `
+  <div class="container py-4" style="max-width:860px">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="mb-0">${esc(e.title)}</h5><span class="badge text-bg-dark fs-6" id="timer"></span>
+    </div>
+    <div class="progress mb-3" style="height:8px"><div class="progress-bar" style="width:${(ex.i + 1) / n * 100}%"></div></div>
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <div class="text-muted mb-2">Question ${ex.i + 1} of ${n}</div>
+        <h5 class="mb-4">${esc(q.q)}</h5>
+        ${q.options.map((o, k) => `<div class="opt ${ex.ans[ex.i] === k ? 'sel' : ''}" onclick="pick(${k})"><span class="letter">${'ABCD'[k]}</span><span>${esc(o)}</span></div>`).join('')}
+      </div>
+      <div class="card-footer bg-white d-flex justify-content-between">
+        <button class="btn btn-outline-secondary" ${ex.i === 0 ? 'disabled' : ''} onclick="go(-1)"><i class="bi bi-arrow-left"></i> Previous</button>
+        ${ex.i < n - 1 ? `<button class="btn btn-primary" onclick="go(1)">Next <i class="bi bi-arrow-right"></i></button>`
+          : `<button class="btn btn-success" onclick="submitExam()"><i class="bi bi-send-check"></i> Submit Exam</button>`}
+      </div>
+    </div>
+    <div class="mt-3 d-flex flex-wrap gap-2 justify-content-center">
+      ${ex.qs.map((_, k) => `<button class="btn qnav btn-${k === ex.i ? 'primary' : ex.ans[k] >= 0 ? 'success' : 'outline-secondary'}" onclick="jump(${k})">${k + 1}</button>`).join('')}
+    </div>
+  </div>`;
+  tick();
+}
+function pick(k){ ex.ans[ex.i] = k; renderExam(); }
+function go(d){ ex.i = Math.min(ex.qs.length - 1, Math.max(0, ex.i + d)); renderExam(); }
+function jump(k){ ex.i = k; renderExam(); }
+async function submitExam(auto){
+  if(!ex || ex.done) return;
+  const un = ex.ans.filter(a => a < 0).length;
+  if(!auto && !confirm(un ? `You have ${un} unanswered question(s). Submit anyway?` : 'Submit the exam now?')) return;
+  ex.done = true; clearInterval(timer); window.onbeforeunload = null;
+  const e = curExam(), total = ex.qs.length;
+  const score = ex.qs.reduce((s, q, i) => s + (ex.ans[i] === q.correct ? 1 : 0), 0);
+  const percent = round2(score / total * 100);
+  const r = { examId: ex.examId, examTitle: e.title, reg: sess.reg, name: sess.name, score, total, percent, status: statusOf(percent, e),
+              date: new Date().toISOString(), answers: ex.ans.slice(), qs: ex.qs };
+  app.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">Saving your result...</p></div>';
+  try{ await Store.addResult(r); }catch(err){ console.error(err); toast('Could not save result: ' + err.message, 'danger'); }
+  ex = null; showResult(r);
+}
+function showResult(r){
+  const pass = r.status === 'Pass';
+  app.innerHTML = `
+  <div class="container py-5" style="max-width:600px">
+    <div class="card shadow border-0 text-center p-4">
+      <h3 class="mb-4">Exam Result</h3>
+      <div class="score-circle ${pass ? 'bg-g2' : 'bg-g4'}"><div class="display-5 fw-bold">${r.percent}%</div><div>${r.score} / ${r.total}</div></div>
+      <h4 class="mt-4">${pass ? '&#127881; Congratulations, you passed!' : 'Sorry, you did not pass.'}</h4>
+      <table class="table table-sm mt-3 text-start">
+        <tr><th>Exam</th><td>${esc(r.examTitle)}</td></tr><tr><th>Correct Answers</th><td>${r.score}</td></tr>
+        <tr><th>Wrong / Unanswered</th><td>${r.total - r.score}</td></tr><tr><th>Percentage</th><td>${r.percent}%</td></tr>
+        <tr><th>Result</th><td>${badge(r.status)}</td></tr>
+      </table>
+      <div class="d-flex gap-2 justify-content-center flex-wrap">
+        <button class="btn btn-outline-primary" onclick="reviewObj(${JSON.stringify(r.id).replace(/"/g, '&quot;')})"><i class="bi bi-eye"></i> View Correct Answers</button>
+        <button class="btn btn-primary" onclick="nav()"><i class="bi bi-speedometer2"></i> Go to Dashboard</button>
+      </div>
+    </div>
+  </div>`;
+}
+function reviewObj(id){ reviewResult(id); }
+function reviewResult(id){
+  const r = results.find(x => x.id === id); if(!r || !r.qs) return toast('Review not available.', 'warning');
+  const back = sess.role === 'admin' ? `adminTab='results';nav()` : 'nav()';
+  app.innerHTML = `
+  <div class="container py-4" style="max-width:860px">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div><h4 class="mb-0">Answer Review</h4><div class="text-muted">${esc(r.name)} (${esc(r.reg)}) &middot; ${esc(r.examTitle)} &middot; ${r.score}/${r.total} (${r.percent}%)</div></div>
+      <button class="btn btn-primary" onclick="${back}">&larr; Back</button>
+    </div>
+    ${r.qs.map((q, i) => {
+      const a = r.answers[i];
+      return `<div class="card shadow-sm mb-3"><div class="card-body">
+        <div class="d-flex justify-content-between"><div class="text-muted">Question ${i + 1}</div>
+        ${a === q.correct ? '<span class="badge text-bg-success">Correct</span>' : a < 0 ? '<span class="badge text-bg-secondary">Not answered</span>' : '<span class="badge text-bg-danger">Wrong</span>'}</div>
+        <h6 class="my-2">${esc(q.q)}</h6>
+        ${q.options.map((o, k) => `<div class="opt ${k === q.correct ? 'correct' : (k === a ? 'wrong' : '')}" style="cursor:default"><span class="letter">${'ABCD'[k]}</span><span>${esc(o)}
+          ${k === a ? '<em class="ms-2 small">(your answer)</em>' : ''}${k === q.correct ? '<em class="ms-2 small">(correct answer)</em>' : ''}</span></div>`).join('')}
+      </div></div>`;
+    }).join('')}
+  </div>`;
+}
+
+/* ===================== ADMIN ===================== */
+function adminView(){
+  const tabs = [['dashboard', 'speedometer2', 'Dashboard'], ['students', 'people', 'Students'], ['results', 'clipboard-data', 'Results'], ['questions', 'question-circle', 'Questions'], ['settings', 'gear', 'Exam Settings']];
+  app.innerHTML = `
+  <div class="container-fluid"><div class="row">
+    <div class="col-md-2 sidebar p-3">
+      <ul class="nav flex-md-column flex-row flex-wrap">${tabs.map(t => `<li class="nav-item"><a class="nav-link ${adminTab === t[0] ? 'active' : ''}" onclick="adminTab='${t[0]}';nav()"><i class="bi bi-${t[1]} me-2"></i>${t[2]}</a></li>`).join('')}</ul>
+    </div>
+    <div class="col-md-10 p-4" id="adminBody"></div>
+  </div></div>`;
+  ({ dashboard: aDashboard, students: aStudents, results: aResults, questions: aQuestions, settings: aSettings })[adminTab]();
+}
+
+function aDashboard(){
+  const e = curExam(), n = results.length;
+  const passed = results.filter(r => r.status === 'Pass').length, failed = n - passed;
+  const passP = n ? round2(passed / n * 100) : 0, failP = n ? round2(failed / n * 100) : 0;
+  const completed = cfg.exams.filter(x => x.status === 'completed').length;
+  const card = (cls, label, val, icon) => `<div class="col-6 col-lg-4 col-xl-3"><div class="card stat-card ${cls} p-3"><div class="d-flex justify-content-between"><div><div class="small">${label}</div><div class="fs-3 fw-bold">${val}</div></div><i class="bi bi-${icon} fs-1 opacity-50"></i></div></div></div>`;
+  $('#adminBody').innerHTML = `
+    <h3 class="mb-3">Dashboard</h3>
+    <div class="row g-3 mb-4">
+      ${card('bg-g1', 'Total Students', students.length, 'people')}${card('bg-g5', 'Total Exams', cfg.exams.length, 'journal-text')}
+      ${card('bg-g6', 'Completed Exams', completed, 'check2-all')}${card('bg-g3', 'Total Attempts', n, 'clipboard-check')}
+      ${card('bg-g1', 'Average Score', avg(results.map(r => r.percent)) + '%', 'bar-chart')}${card('bg-g2', 'Passed', passP + '%', 'emoji-smile')}
+      ${card('bg-g4', 'Failed', failP + '%', 'emoji-frown')}${card('bg-g5', 'Questions', cfg.questions.length, 'question-circle')}
+    </div>
+    <div class="row g-4">
+      <div class="col-lg-6"><div class="card shadow-sm h-100"><div class="card-body">
+        <h5>Pass / Fail Percentage</h5>
+        <div class="mb-1 small">Passed (${passed}) - ${passP}%</div><div class="progress mb-3" style="height:18px"><div class="progress-bar bg-success" style="width:${passP}%"></div></div>
+        <div class="mb-1 small">Failed (${failed}) - ${failP}%</div><div class="progress" style="height:18px"><div class="progress-bar bg-danger" style="width:${failP}%"></div></div>
+        <hr><div class="small text-muted">Current exam: <b>${esc(e.title)}</b> (${e.status}) &middot; Average: ${avg(results.filter(r => r.examId === e.id).map(r => r.percent))}%</div>
+      </div></div></div>
+      <div class="col-lg-6"><div class="card shadow-sm h-100"><div class="card-body">
+        <h5><i class="bi bi-trophy-fill text-warning"></i> Top Scorers (Current Exam)</h5>
+        ${topScorers(e.id).length ? `<table class="table table-sm"><thead><tr><th>#</th><th>Name</th><th>Reg No</th><th>Score</th><th>%</th></tr></thead><tbody>${topScorers(e.id).map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.name)}</td><td>${esc(r.reg)}</td><td>${r.score}/${r.total}</td><td>${r.percent}%</td></tr>`).join('')}</tbody></table>` : '<p class="text-muted">No attempts yet.</p>'}
+      </div></div></div>
+    </div>`;
+}
+
+function aStudents(){
+  $('#adminBody').innerHTML = `
+    <div class="d-flex justify-content-between align-items-center mb-3"><h3 class="mb-0">Students</h3><input id="sq" class="form-control w-auto" placeholder="Search name / reg no" oninput="fillStudents()"></div>
+    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+      <thead><tr><th>Reg No</th><th>Name</th><th>Attempts</th><th>Average %</th><th>Best %</th><th>Passed</th><th></th></tr></thead><tbody id="sbody"></tbody></table></div></div>`;
+  fillStudents();
+}
+function fillStudents(){
+  const q = ($('#sq').value || '').toLowerCase();
+  const list = students.filter(s => (s.reg + ' ' + s.name).toLowerCase().includes(q)).sort((a, b) => a.reg.localeCompare(b.reg));
+  $('#sbody').innerHTML = list.length ? list.map(s => {
+    const rs = results.filter(r => r.reg === s.reg);
+    return `<tr><td>${esc(s.reg)}</td><td>${esc(s.name)}</td><td>${rs.length}</td><td>${avg(rs.map(r => r.percent))}%</td><td>${rs.length ? Math.max(...rs.map(r => r.percent)) : 0}%</td><td>${rs.filter(r => r.status === 'Pass').length}</td>
+      <td class="text-end"><button class="btn btn-sm btn-outline-danger" onclick="delStudent('${esc(s.reg)}')"><i class="bi bi-trash"></i></button></td></tr>`;
+  }).join('') : '<tr><td colspan="7" class="text-center text-muted py-4">No students found.</td></tr>';
+}
+async function delStudent(reg){
+  if(!confirm(`Delete student ${reg} and all of their results?`)) return;
+  await Store.deleteStudent(reg); toast('Student deleted'); aStudents();
+}
+
+function aResults(){
+  $('#adminBody').innerHTML = `
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+      <h3 class="mb-0">Results</h3>
+      <div class="d-flex gap-2 flex-wrap">
+        <select id="rex" class="form-select w-auto" onchange="fillResults()"><option value="all">All exams</option>${cfg.exams.map(x => `<option value="${x.id}">${esc(x.title)} (#${x.id})</option>`).join('')}</select>
+        <input id="rq" class="form-control w-auto" placeholder="Search name / reg no" oninput="fillResults()">
+        <button class="btn btn-primary" onclick="addResultModal()"><i class="bi bi-plus-lg"></i> Add Score</button>
+      </div>
+    </div>
+    <div class="row g-3 mb-3" id="rstats"></div>
+    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+      <thead><tr><th>Reg No</th><th>Name</th><th>Exam</th><th>Score</th><th>%</th><th>Status</th><th>Date</th><th></th></tr></thead><tbody id="rbody"></tbody></table></div></div>`;
+  fillResults();
+}
+function fillResults(){
+  const ex_ = $('#rex').value, q = ($('#rq').value || '').toLowerCase();
+  const list = results.filter(r => (ex_ === 'all' || String(r.examId) === ex_) && (r.reg + ' ' + r.name).toLowerCase().includes(q)).sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const p = list.filter(r => r.status === 'Pass').length;
+  $('#rstats').innerHTML = `<div class="col-md-3 col-6"><div class="card p-2 text-center"><small>Attempts</small><b>${list.length}</b></div></div>
+    <div class="col-md-3 col-6"><div class="card p-2 text-center"><small>Average</small><b>${avg(list.map(r => r.percent))}%</b></div></div>
+    <div class="col-md-3 col-6"><div class="card p-2 text-center"><small>Passed</small><b class="text-success">${list.length ? round2(p / list.length * 100) : 0}%</b></div></div>
+    <div class="col-md-3 col-6"><div class="card p-2 text-center"><small>Failed</small><b class="text-danger">${list.length ? round2((list.length - p) / list.length * 100) : 0}%</b></div></div>`;
+  $('#rbody').innerHTML = list.length ? list.map(r => `<tr><td>${esc(r.reg)}</td><td>${esc(r.name)}</td><td>${esc(r.examTitle)}</td><td>${r.score}/${r.total}</td><td>${r.percent}%</td><td>${badge(r.status)}</td><td class="small">${fmtDate(r.date)}</td>
+    <td class="text-end text-nowrap">
+      ${r.qs && r.qs.length ? `<button class="btn btn-sm btn-outline-secondary" title="View answers" onclick="reviewResult('${r.id}')"><i class="bi bi-eye"></i></button>` : ''}
+      <button class="btn btn-sm btn-outline-primary" title="Edit score" onclick="editResultModal('${r.id}')"><i class="bi bi-pencil"></i></button>
+      <button class="btn btn-sm btn-outline-danger" title="Delete" onclick="delResult('${r.id}')"><i class="bi bi-trash"></i></button></td></tr>`).join('')
+    : '<tr><td colspan="8" class="text-center text-muted py-4">No results found.</td></tr>';
+}
+function editResultModal(id){
+  const r = results.find(x => x.id === id);
+  openModal(`Edit Score - ${r.name} (${r.reg})`, `
+    <div class="row g-3"><div class="col-6"><label class="form-label">Score (correct answers)</label><input id="f_score" type="number" min="0" max="${r.total}" class="form-control" value="${r.score}"></div>
+    <div class="col-6"><label class="form-label">Total Questions</label><input id="f_total" type="number" min="1" class="form-control" value="${r.total}"></div></div>
+    <div class="form-text mt-2">Percentage and Pass/Fail are recalculated automatically using the exam's pass percentage.</div>`,
+  async () => {
+    const s = parseInt($('#f_score').value), t = parseInt($('#f_total').value);
+    if(isNaN(s) || isNaN(t) || t < 1 || s < 0 || s > t) { toast('Enter a valid score (0 to total).', 'danger'); return false; }
+    r.score = s; r.total = t; r.percent = round2(s / t * 100); r.status = statusOf(r.percent, examById(r.examId));
+    await Store.updateResult(r); toast('Score updated'); aResults();
+  });
+}
+function addResultModal(){
+  openModal('Add Exam Score', `
+    <div class="row g-3">
+      <div class="col-md-6"><label class="form-label">Register Number</label><input id="f_reg" class="form-control" placeholder="25CSE01" maxlength="7"></div>
+      <div class="col-md-6"><label class="form-label">Name</label><input id="f_name" class="form-control" placeholder="Letters only"></div>
+      <div class="col-md-4"><label class="form-label">Exam</label><select id="f_exam" class="form-select">${cfg.exams.map(x => `<option value="${x.id}" ${x.id === cfg.currentExamId ? 'selected' : ''}>${esc(x.title)} (#${x.id})</option>`).join('')}</select></div>
+      <div class="col-md-4"><label class="form-label">Score</label><input id="f_score" type="number" min="0" class="form-control"></div>
+      <div class="col-md-4"><label class="form-label">Total Questions</label><input id="f_total" type="number" min="1" class="form-control" value="${cfg.questions.length || 10}"></div>
+    </div>`,
+  async () => {
+    const reg = $('#f_reg').value.trim().toUpperCase(), name = $('#f_name').value.trim().replace(/\s+/g, ' ');
+    const s = parseInt($('#f_score').value), t = parseInt($('#f_total').value), eid = parseInt($('#f_exam').value);
+    if(!REG_RE.test(reg)) { toast('Register number must be 25CSE01 - 25CSE72.', 'danger'); return false; }
+    if(!NAME_RE.test(name)) { toast('Name must contain only letters.', 'danger'); return false; }
+    if(isNaN(s) || isNaN(t) || t < 1 || s < 0 || s > t) { toast('Enter a valid score (0 to total).', 'danger'); return false; }
+    const old = students.find(x => x.reg === reg);
+    if(!old) await Store.saveStudent({ reg, name, createdAt: new Date().toISOString() });
+    const e = examById(eid), percent = round2(s / t * 100);
+    await Store.addResult({ examId: eid, examTitle: e.title, reg, name: old ? old.name : name, score: s, total: t, percent, status: statusOf(percent, e), date: new Date().toISOString(), answers: [], qs: [] });
+    toast('Score added'); aResults();
+  });
+}
+async function delResult(id){
+  if(!confirm('Delete this result? The student will be able to re-attempt the exam.')) return;
+  await Store.deleteResult(id); toast('Result deleted'); aResults();
+}
+
+function aQuestions(){
+  $('#adminBody').innerHTML = `
+    <div class="d-flex justify-content-between align-items-center mb-3"><h3 class="mb-0">Questions (${cfg.questions.length})</h3>
+      <button class="btn btn-primary" onclick="questionModal(-1)"><i class="bi bi-plus-lg"></i> Add Question</button></div>
+    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+      <thead><tr><th>#</th><th>Question</th><th>Options</th><th>Correct</th><th></th></tr></thead><tbody>
+      ${cfg.questions.map((q, i) => `<tr><td>${i + 1}</td><td style="min-width:220px">${esc(q.q)}</td>
+        <td class="small">${q.options.map((o, k) => `<div>${'ABCD'[k]}. ${esc(o)}</div>`).join('')}</td>
+        <td><span class="badge text-bg-success">${'ABCD'[q.correct]}</span></td>
+        <td class="text-end text-nowrap"><button class="btn btn-sm btn-outline-primary" onclick="questionModal(${i})"><i class="bi bi-pencil"></i></button>
+        <button class="btn btn-sm btn-outline-danger" onclick="delQuestion(${i})"><i class="bi bi-trash"></i></button></td></tr>`).join('') || '<tr><td colspan="5" class="text-center text-muted py-4">No questions yet.</td></tr>'}
+      </tbody></table></div></div>`;
+}
+function questionModal(i){
+  const q = i >= 0 ? cfg.questions[i] : { q: '', options: ['', '', '', ''], correct: 0 };
+  openModal(i >= 0 ? 'Edit Question' : 'Add Question', `
+    <div class="mb-3"><label class="form-label">Question</label><textarea id="f_q" class="form-control" rows="2">${esc(q.q)}</textarea></div>
+    ${[0, 1, 2, 3].map(k => `<div class="input-group mb-2"><span class="input-group-text">${'ABCD'[k]}</span><input id="f_o${k}" class="form-control" placeholder="Option ${'ABCD'[k]}" value="${esc(q.options[k])}"></div>`).join('')}
+    <div class="mt-3"><label class="form-label">Correct Option</label><select id="f_c" class="form-select w-auto">${[0, 1, 2, 3].map(k => `<option value="${k}" ${q.correct === k ? 'selected' : ''}>${'ABCD'[k]}</option>`).join('')}</select></div>`,
+  async () => {
+    const nq = { q: $('#f_q').value.trim(), options: [0, 1, 2, 3].map(k => $('#f_o' + k).value.trim()), correct: parseInt($('#f_c').value) };
+    if(!nq.q || nq.options.some(o => !o)) { toast('Fill the question and all four options.', 'danger'); return false; }
+    if(i >= 0) cfg.questions[i] = nq; else cfg.questions.push(nq);
+    await Store.saveConfig(); toast('Question saved'); aQuestions();
+  });
+}
+async function delQuestion(i){
+  if(!confirm('Delete this question?')) return;
+  cfg.questions.splice(i, 1); await Store.saveConfig(); toast('Question deleted'); aQuestions();
+}
+
+function examForm(e){
+  return `<div class="row g-3">
+    <div class="col-md-12"><label class="form-label">Exam Title</label><input id="e_title" class="form-control" value="${esc(e.title)}"></div>
+    <div class="col-md-4"><label class="form-label">Exam Date</label><input id="e_date" type="date" class="form-control" value="${esc(e.date)}"></div>
+    <div class="col-md-4"><label class="form-label">Start Time</label><input id="e_time" type="time" class="form-control" value="${esc(e.time)}"></div>
+    <div class="col-md-4"><label class="form-label">Duration (minutes)</label><input id="e_dur" type="number" min="1" class="form-control" value="${e.duration}"></div>
+    <div class="col-md-4"><label class="form-label">Pass Percentage</label><input id="e_pass" type="number" min="0" max="100" class="form-control" value="${e.pass}"></div>
+    <div class="col-md-8 d-flex align-items-end"><div class="form-check form-switch fs-5"><input id="e_rand" class="form-check-input" type="checkbox" ${e.random ? 'checked' : ''}><label class="form-check-label" for="e_rand">Random questions</label></div></div>
+  </div>`;
+}
+function readExamForm(){
+  const o = { title: $('#e_title').value.trim(), date: $('#e_date').value, time: $('#e_time').value || '00:00', duration: parseInt($('#e_dur').value), pass: parseFloat($('#e_pass').value), random: $('#e_rand').checked };
+  if(!o.title || isNaN(o.duration) || o.duration < 1 || isNaN(o.pass) || o.pass < 0 || o.pass > 100){ toast('Check title, duration and pass percentage.', 'danger'); return null; }
+  return o;
+}
+function aSettings(){
+  const e = curExam();
+  $('#adminBody').innerHTML = `
+    <div class="d-flex justify-content-between align-items-center mb-3"><h3 class="mb-0">Exam Settings</h3>
+      <button class="btn btn-success" onclick="newExamModal()"><i class="bi bi-plus-circle"></i> Conduct New Exam</button></div>
+    <div class="card shadow-sm mb-4"><div class="card-body">
+      <h5 class="mb-3">Current Exam <span class="badge text-bg-${e.status === 'active' ? 'success' : 'secondary'}">${e.status}</span></h5>
+      ${examForm(e)}
+      <div class="mt-3 d-flex gap-2 flex-wrap">
+        <button class="btn btn-primary" onclick="saveSettings()"><i class="bi bi-save"></i> Save Settings</button>
+        ${e.status === 'active' ? `<button class="btn btn-outline-secondary" onclick="setStatus(${e.id},'completed')"><i class="bi bi-flag"></i> Mark as Completed</button>`
+          : `<button class="btn btn-outline-success" onclick="setStatus(${e.id},'active')"><i class="bi bi-arrow-repeat"></i> Reopen</button>`}
+      </div>
+    </div></div>
+    <div class="card shadow-sm"><div class="card-body"><h5>All Exams</h5><div class="table-responsive"><table class="table align-middle">
+      <thead><tr><th>#</th><th>Title</th><th>Date</th><th>Duration</th><th>Pass %</th><th>Random</th><th>Attempts</th><th>Avg %</th><th>Status</th><th></th></tr></thead><tbody>
+      ${cfg.exams.slice().reverse().map(x => { const rs = results.filter(r => r.examId === x.id); return `<tr><td>${x.id}</td><td>${esc(x.title)}${x.id === cfg.currentExamId ? ' <span class="badge text-bg-primary">current</span>' : ''}</td><td>${esc(x.date)} ${esc(x.time)}</td><td>${x.duration}m</td><td>${x.pass}%</td><td>${x.random ? 'On' : 'Off'}</td><td>${rs.length}</td><td>${avg(rs.map(r => r.percent))}%</td>
+        <td><span class="badge text-bg-${x.status === 'active' ? 'success' : 'secondary'}">${x.status}</span></td>
+        <td class="text-end">${x.id !== cfg.currentExamId ? `<button class="btn btn-sm btn-outline-primary" onclick="makeCurrent(${x.id})">Make current</button>` : ''}</td></tr>`; }).join('')}
+      </tbody></table></div></div></div>`;
+}
+async function saveSettings(){
+  const o = readExamForm(); if(!o) return;
+  Object.assign(curExam(), o); await Store.saveConfig(); toast('Settings saved'); aSettings();
+}
+async function setStatus(id, s){ examById(id).status = s; await Store.saveConfig(); toast('Exam ' + s); aSettings(); }
+async function makeCurrent(id){ cfg.currentExamId = id; await Store.saveConfig(); toast('Current exam changed'); aSettings(); }
+function newExamModal(){
+  const e = curExam();
+  openModal('Conduct New Exam', examForm({ title: 'Python Basics Quiz ' + (cfg.exams.length + 1), date: todayStr(), time: '00:00', duration: e.duration, pass: e.pass, random: e.random }) +
+    '<div class="form-text mt-3">The current exam will be marked as completed. The existing question bank is used for the new exam.</div>',
+  async () => {
+    const o = readExamForm(); if(!o) return false;
+    curExam().status = 'completed';
+    const id = Math.max(...cfg.exams.map(x => x.id)) + 1;
+    cfg.exams.push({ id, ...o, status: 'active', createdAt: new Date().toISOString() });
+    cfg.currentExamId = id; await Store.saveConfig(); toast('New exam created'); aSettings();
+  }, 'Create Exam');
+}
+
+/* ===================== BOOT ===================== */
+(async function boot(){
+  modal = new bootstrap.Modal('#appModal');
+  await Store.init();
+  await Store.load();
+  render();
+})();
+</script>
+</body>
+</html>
